@@ -1,0 +1,84 @@
+{
+  "roadmap_name": "Full Stack JavaScript 2026 — MASTER",
+  "levels": [
+    {
+      "title": "1. JavaScript Base (O Alicerce) 🧱",
+      "status": "in_progress",
+      "skills": [
+        { "name": "Fundamentos JS", "items": ["Variáveis (let/const)", "Condicionais", "Laços"], "concluidoGlobal": false },
+        { "name": "Estruturas JS", "items": ["Funções", "Arrays e Objetos", "Métodos de Array"], "concluidoGlobal": false },
+        { "name": "ES6+ e Modernidade", "items": ["Destructuring", "Spread/Rest", "Template Strings"], "concluidoGlobal": false },
+        { "name": "Assincronismo", "items": ["Promises", "Async/Await", "setTimeout"], "concluidoGlobal": false }
+      ]
+    },
+    {
+      "title": "2. Front-End Puro (O Navegador) 🌐",
+      "status": "locked",
+      "skills": [
+        { "name": "DOM Master", "items": ["Seletores", "Eventos", "classList"], "concluidoGlobal": false },
+        { "name": "Persistência", "items": ["LocalStorage"], "concluidoGlobal": false },
+        { "name": "APIs", "items": ["Fetch API", "JSON", "Métodos HTTP"], "concluidoGlobal": false }
+      ]
+    },
+    {
+      "title": "3. Ferramentas, Infra & IA 🤖",
+      "status": "locked",
+      "skills": [
+        { "name": "Git & GitHub", "items": ["Branches", "Pull Requests"], "concluidoGlobal": false },
+        { "name": "Docker", "items": ["Containers", "Docker Compose"], "concluidoGlobal": false },
+        { "name": "IA para Dev", "items": ["Agentes", "MCP Servers", "Prompts"], "concluidoGlobal": false }
+      ]
+    },
+    {
+      "title": "4. O Próximo Nível: TypeScript 🟦",
+      "status": "locked",
+      "skills": [
+        { "name": "Tipagem TS", "items": ["Interfaces", "Types", "Generics"], "concluidoGlobal": false },
+        { "name": "Segurança", "items": ["Narrowing"], "concluidoGlobal": false }
+      ]
+    },
+    {
+      "title": "5. Front-End Profissional ⚛️",
+      "status": "locked",
+      "skills": [
+        { "name": "React Core", "items": ["Componentes", "Props", "State"], "concluidoGlobal": false },
+        { "name": "Hooks & Next.js 15", "items": ["useState/useEffect", "Server Components"], "concluidoGlobal": false },
+        { "name": "Estilo & Testes", "items": ["Tailwind", "Shadcn/UI", "Cypress/Jest"], "concluidoGlobal": false }
+      ]
+    },
+    {
+      "title": "6. Back-End Robusto 🟢",
+      "status": "locked",
+      "skills": [
+        { "name": "Node & Express", "items": ["Middlewares", "Rotas", "Controllers"], "concluidoGlobal": false },
+        { "name": "NestJS", "items": ["Arquitetura", "Injeção de Dependência"], "concluidoGlobal": false },
+        { "name": "Segurança", "items": ["JWT", "Bcrypt"], "concluidoGlobal": false }
+      ]
+    },
+    {
+      "title": "7. Banco de Dados & ORMs 🗄️",
+      "status": "locked",
+      "skills": [
+        { "name": "Bancos", "items": ["MySQL", "PostgreSQL", "MongoDB"], "concluidoGlobal": false },
+        { "name": "ORM", "items": ["Prisma (Migrations/CRUD)"], "concluidoGlobal": false }
+      ]
+    },
+    {
+      "title": "8. SaaS & Monetização 💸",
+      "status": "locked",
+      "skills": [
+        { "name": "Pagamentos", "items": ["Stripe", "Assinaturas"], "concluidoGlobal": false },
+        { "name": "Auth Social", "items": ["Login Google/GitHub"], "concluidoGlobal": false },
+        { "name": "Lógica SaaS", "items": ["Planos e Permissões"], "concluidoGlobal": false }
+      ]
+    },
+    {
+      "title": "9. Carreira & Mercado 💼",
+      "status": "locked",
+      "skills": [
+        { "name": "Marketing Dev", "items": ["LinkedIn", "Portfólio GitHub"], "concluidoGlobal": false },
+        { "name": "Business", "items": ["Freelancer", "Contratos", "Soft Skills"], "concluidoGlobal": false }
+      ]
+    }
+  ]
+}

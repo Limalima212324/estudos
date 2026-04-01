@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="pt-br" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyFlow - Monitoramento de Estudos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #f1f5f9;
+            --card-bg: #ffffff;
+            --text: #0f172a;
+        }
+
+        .dark {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text: #f8fafc;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text);
+            transition: background-color 0.3s ease;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .dashboard-card {
+            min-height: 140px;
+        }
+
+        .chart-container {
+            height: 120px;
+            position: relative;
+        }
+
+        .course-grid-container {
+            min-height: 200px;
+            /* Reduz o buraco vazio */
+            height: auto;
+            /* Deixa crescer conforme a necessidade */
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            padding-bottom: 2rem;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #6366f1;
+            border-radius: 10px;
+        }
+
+        input {
+            min-width: 0;
+        }
+    </style>
+</head>
+
+<body class="p-4 md:p-6 lg:p-8">
+
+    <header class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl md:text-3xl font-bold text-indigo-500 tracking-tight">StudyFlow</h1>
+        <button id="themeToggle"
+            class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 text-xs transition-colors">Alternar
+            Tema</button>
+    </header>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6 mb-10">
+        <div class="p-5 rounded-2xl bg-[var(--card-bg)] shadow-xl border-l-4 border-indigo-500 dashboard-card">
+            <h3 class="text-[10px] uppercase font-bold opacity-50">Estudo Hoje</h3>
+            <p class="text-2xl md:text-3xl font-black mt-1" id="timeToday">00:00:00</p>
+            <div class="mt-4 h-1.5 w-full bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                <div id="goalBar" class="h-full bg-green-500 transition-all duration-500" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <div
+            class="sm:col-span-2 p-5 rounded-2xl bg-[var(--card-bg)] shadow-xl border-t-4 border-indigo-600 dashboard-card text-center">
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-[10px] uppercase font-bold opacity-50">Progresso Semanal</h3>
+                <div class="flex gap-1">
+                    <input type="number" id="weeklyGoalInput"
+                        class="w-10 bg-slate-100 dark:bg-slate-800 rounded p-1 text-[10px] outline-none"
+                        placeholder="Hrs">
+                    <button onclick="updateWeeklyGoal()"
+                        class="text-[9px] bg-indigo-500 text-white px-2 py-1 rounded font-bold">OK</button>
+                </div>
+            </div>
+            <div id="milestoneMessage" class="text-xs font-bold text-indigo-400 mb-2 h-4">Vamos pra cima!</div>
+            <div class="w-full bg-gray-200 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
+                <div id="weeklyProgressBar" class="h-full bg-indigo-600 transition-all duration-1000" style="width: 0%">
+                </div>
+            </div>
+        </div>
+
+        <div class="p-5 rounded-2xl bg-[var(--card-bg)] shadow-xl dashboard-card">
+            <p class="text-[8px] uppercase font-bold opacity-40 mb-2 text-center">Últimos 7 dias (m)</p>
+            <div class="chart-container"><canvas id="weeklyChart"></canvas></div>
+        </div>
+
+        <div class="p-5 rounded-2xl bg-[var(--card-bg)] shadow-xl dashboard-card">
+            <p class="text-[8px] uppercase font-bold opacity-40 mb-2 text-center">Foco por Matéria</p>
+            <div class="chart-container"><canvas id="distChart"></canvas></div>
+        </div>
+    </div>
+
+    <section class="mt-8 mb-10">
+        <h2 class="text-xl font-bold mb-4">🗺️ Mapa de Domínio Full Stack</h2>
+        <div id="roadmapView" class="w-full">
+        </div>
+    </section>
+
+    <section>
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <h2 class="text-xl md:text-2xl font-bold">Meus Cursos</h2>
+            <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                <div
+                    class="flex-1 sm:flex-none p-2 px-4 rounded-xl bg-[var(--card-bg)] shadow flex items-center justify-between gap-4 border border-slate-200 dark:border-slate-700">
+                    <span id="pomoDisplay" class="text-lg font-mono font-bold text-indigo-500">25:00</span>
+                    <div class="flex gap-1">
+                        <button id="btnPomo" onclick="togglePomodoro()"
+                            class="bg-green-600 text-white text-[9px] px-2 py-1 rounded font-bold">PLAY</button>
+                        <button onclick="resetPomodoro()"
+                            class="bg-slate-500 text-white text-[9px] px-2 py-1 rounded font-bold">RESET</button>
+                    </div>
+                </div>
+                <button onclick="openModal()"
+                    class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 px-6 py-2.5 rounded-xl text-white font-bold shadow-lg text-xs">+
+                    NOVO CURSO</button>
+            </div>
+        </div>
+        <div id="courseGrid"
+            class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 course-grid-container"></div>
+    </section>
+
+    <div id="modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-[var(--card-bg)] p-6 rounded-2xl w-full max-w-md border border-slate-700 shadow-2xl">
+            <h3 class="text-lg font-bold mb-4 text-center">Novo Curso</h3>
+            <input type="text" id="courseName"
+                class="w-full p-3 rounded-lg bg-slate-100 dark:bg-slate-800 outline-none border-2 border-transparent focus:border-indigo-500 transition-all mb-6 text-white">
+            <div class="flex gap-3">
+                <button onclick="closeModal()" class="flex-1 py-2 text-sm opacity-50">Cancelar</button>
+                <button onclick="addCourse()"
+                    class="flex-1 py-2 bg-indigo-600 text-white rounded-lg font-bold text-sm">Criar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let appData = JSON.parse(localStorage.getItem('studyFlowData')) || {
+            courses: [], totalStudySeconds: 0, dailyGoalSeconds: 7200, weeklyGoalSeconds: 36000, history: {}, roadmap: null
+        };
+
+        const sanitize = () => {
+            appData.courses.forEach(c => {
+                if (!c.topics) c.topics = [];
+                if (!c.links) c.links = [];
+                if (isNaN(c.totalTime)) c.totalTime = 0;
+            });
+            if (!appData.history) appData.history = {};
+        };
+        sanitize();
+
+        let studyInterval = null, pomoInterval = null, myChart = null, distChart = null;
+        let activeCourseId = null, isStudyPaused = false, studySecondsCounter = 0, pomoSeconds = 25 * 60;
+
+        const save = () => localStorage.setItem('studyFlowData', JSON.stringify(appData));
+        const formatTime = (s) => `${Math.floor(s / 3600).toString().padStart(2, '0')}:${Math.floor((s % 3600) / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
+
+        // --- ROADMAP ---
+        async function carregarRoadmap() {
+            try {
+                const resposta = await fetch('./json/roadmap_data.json');
+                const dados = await resposta.json();
+                if (!appData.roadmap) appData.roadmap = dados;
+                renderizarRoadmap();
+            } catch (erro) { console.error("Roadmap error:", erro); }
+        }
+
+        function sincronizarComRoadmap(nomeTopico, concluido) {
+            if (!appData.roadmap) return;
+            appData.roadmap.levels.forEach(level => {
+                level.skills.forEach(skill => {
+                    if (nomeTopico.toLowerCase().includes(skill.name.toLowerCase())) {
+                        skill.concluidoGlobal = concluido;
+                    }
+                });
+            });
+            save(); renderizarRoadmap();
+        }
+
+        function renderizarRoadmap() {
+            const container = document.getElementById('roadmapView');
+            if (!appData.roadmap || !container) return;
+            container.innerHTML = appData.roadmap.levels.map(level => {
+                const isLocked = level.status === "locked";
+                return `
+                    <div class="p-5 rounded-2xl bg-[var(--card-bg)] shadow-lg mb-6 border-t-4 ${isLocked ? 'border-gray-500 opacity-50' : 'border-indigo-500'}">
+                        <h3 class="text-base font-bold mb-4">${level.title} ${isLocked ? '🔒' : '🚀'}</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            ${level.skills.map(skill => `
+                                <div class="p-3 rounded-xl border ${skill.concluidoGlobal ? 'border-green-500 bg-green-500/10' : 'border-slate-700'}">
+                                    <p class="font-bold text-[11px] mb-1">${skill.name} ${skill.concluidoGlobal ? '✅' : ''}</p>
+                                    <ul class="text-[9px] opacity-50">${skill.items.map(i => `<li>• ${i}</li>`).join('')}</ul>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        // --- EDIÇÕES (AQUI ESTÁ A CORREÇÃO!) ---
+        function renameCourse(id) {
+            const c = appData.courses.find(x => x.id === id);
+            const n = prompt("Novo nome do curso:", c.name);
+            if (n && n.trim()) { c.name = n.trim(); save(); renderCourses(); updateDistChart(); }
+        }
+
+        function renameTopic(courseId, topicId) {
+            const c = appData.courses.find(x => x.id === courseId);
+            const t = c.topics.find(x => x.id === topicId);
+            const n = prompt("Renomear tópico:", t.title);
+            if (n && n.trim()) { t.title = n.trim(); save(); renderCourses(); }
+        }
+
+        function editLink(courseId, linkId) {
+            const c = appData.courses.find(x => x.id === courseId);
+            const l = c.links.find(x => x.id === linkId);
+            const nDesc = prompt("Novo nome:", l.desc); if (!nDesc) return;
+            let nUrl = prompt("Nova URL:", l.url); if (!nUrl) return;
+            if (!nUrl.startsWith('http')) nUrl = 'https://' + nUrl;
+            l.desc = nDesc; l.url = nUrl; save(); renderCourses();
+        }
+
+        function deleteCourse(id) { if (confirm("Excluir curso?")) { appData.courses = appData.courses.filter(x => x.id !== id); save(); renderCourses(); updateDistChart(); } }
+        function deleteTopic(cId, tId) { const c = appData.courses.find(x => x.id === cId); c.topics = c.topics.filter(x => x.id !== tId); save(); renderCourses(); }
+        function removeLink(cId, lId) { const c = appData.courses.find(x => x.id === cId); c.links = c.links.filter(l => l.id !== lId); save(); renderCourses(); }
+
+        // --- RENDER CURSOS ---
+        function renderCourses() {
+            const grid = document.getElementById('courseGrid');
+            grid.innerHTML = appData.courses.map(c => {
+                const p = c.topics.length > 0 ? Math.round((c.topics.filter(t => t.completed).length / c.topics.length) * 100) : 0;
+                const active = activeCourseId === c.id;
+                return `
+                    <div class="p-5 rounded-2xl bg-[var(--card-bg)] shadow-lg border-2 ${active ? 'border-indigo-500' : 'border-transparent'} transition-all">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="flex items-center gap-2 flex-1 min-w-0">
+                                <h4 class="font-black text-base truncate">${c.name}</h4>
+                                <button onclick="renameCourse('${c.id}')" class="text-xs opacity-50 hover:opacity-100">✏️</button>
+                                <button onclick="deleteCourse('${c.id}')" class="text-xs opacity-50 hover:opacity-100">🗑️</button>
+                            </div>
+                            <span class="text-[9px] font-bold bg-indigo-500 text-white px-1.5 py-0.5 rounded ml-2">${p}%</span>
+                        </div>
+                        <div class="text-2xl font-mono font-bold text-center py-2 text-indigo-400" id="display-${c.id}">${active ? formatTime(studySecondsCounter) : '00:00:00'}</div>
+                        
+                        <div class="mt-3 border-t border-slate-100 dark:border-slate-800 pt-3">
+                            <p class="text-[8px] uppercase font-bold opacity-40 mb-2">Checklist</p>
+                            <div class="space-y-1 max-h-28 overflow-y-auto custom-scrollbar mb-3">
+                                ${c.topics.map(t => `
+                                    <div class="flex items-center text-xs p-1 rounded hover:bg-slate-50 dark:hover:bg-slate-800/50 group">
+                                        <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTopic('${c.id}','${t.id}')" class="mr-2 accent-indigo-500 w-3 h-3 cursor-pointer">
+                                        <span class="flex-1 truncate ${t.completed ? 'line-through opacity-30' : ''}">${t.title}</span>
+                                        <button onclick="renameTopic('${c.id}','${t.id}')" class="text-[10px] opacity-0 group-hover:opacity-100 px-1">✏️</button>
+                                        <button onclick="deleteTopic('${c.id}','${t.id}')" class="text-red-400 text-[10px] opacity-0 group-hover:opacity-100 px-1">×</button>
+                                    </div>`).join('')}
+                            </div>
+                            <div class="flex gap-2">
+                                <input type="text" id="in-${c.id}" onkeyup="if(event.key==='Enter')addTopic('${c.id}')" placeholder="Novo tópico..." class="flex-1 bg-slate-50 dark:bg-slate-900 text-[10px] p-2 rounded outline-none border border-transparent focus:border-indigo-500/30">
+                                <button onclick="addTopic('${c.id}')" class="bg-indigo-500 text-white px-3 rounded text-xs font-bold">+</button>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 border-t border-slate-100 dark:border-slate-800 pt-3">
+                            <p class="text-[8px] uppercase font-bold opacity-40 mb-2">Materiais</p>
+                            <div class="space-y-1 mb-3">
+                                ${c.links.map(l => `
+                                    <div class="flex items-center justify-between text-[10px] p-1.5 bg-indigo-50/50 dark:bg-indigo-900/10 rounded group">
+                                        <a href="${l.url}" target="_blank" class="text-indigo-500 font-bold hover:underline truncate mr-2">🔗 ${l.desc}</a>
+                                        <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onclick="editLink('${c.id}','${l.id}')" class="text-[10px]">✏️</button>
+                                            <button onclick="removeLink('${c.id}','${l.id}')" class="text-red-400 text-[10px]">×</button>
+                                        </div>
+                                    </div>`).join('')}
+                            </div>
+                            <div class="grid grid-cols-1 gap-1.5">
+                                <input type="text" id="desc-${c.id}" placeholder="Nome (ex: PDF)" class="bg-slate-50 dark:bg-slate-900 text-[9px] p-2 rounded outline-none">
+                                <div class="flex gap-1">
+                                    <input type="text" id="url-${c.id}" placeholder="URL" class="flex-1 bg-slate-50 dark:bg-slate-900 text-[9px] p-2 rounded outline-none">
+                                    <button onclick="addLink('${c.id}')" class="bg-indigo-600 text-white px-3 rounded font-bold text-xs">+</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2 pt-4">
+                            ${!active ? `<button onclick="toggleStudyTimer('${c.id}')" class="w-full py-2 bg-indigo-600 text-white rounded-xl font-bold text-[10px]">INICIAR</button>` :
+                        `<button onclick="toggleStudyTimer('${c.id}')" class="flex-1 py-2 ${isStudyPaused ? 'bg-blue-600' : 'bg-yellow-600'} text-white rounded-xl font-bold text-[10px]">${isStudyPaused ? 'RETOMAR' : 'PAUSAR'}</button>
+                                 <button onclick="stopStudy('${c.id}')" class="flex-1 py-2 bg-red-600 text-white rounded-xl font-bold text-[10px]">PARAR</button>`}
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        // --- LOGICA DE ESTUDO ---
+        function toggleTopic(cid, tid) {
+            const c = appData.courses.find(x => x.id === cid);
+            const t = c.topics.find(x => x.id === tid);
+            t.completed = !t.completed;
+            sincronizarComRoadmap(t.title, t.completed);
+            save(); renderCourses();
+        }
+
+        function toggleStudyTimer(id) {
+            if (activeCourseId && activeCourseId !== id) return alert("Finalize o atual!");
+            if (activeCourseId === id && !isStudyPaused) { clearInterval(studyInterval); isStudyPaused = true; }
+            else { activeCourseId = id; isStudyPaused = false; studyInterval = setInterval(() => { studySecondsCounter++; document.getElementById(`display-${id}`).innerText = formatTime(studySecondsCounter); }, 1000); }
+            renderCourses();
+        }
+
+        function stopStudy(id) {
+            clearInterval(studyInterval);
+            const c = appData.courses.find(x => x.id === id);
+            const today = new Date().toLocaleDateString('pt-BR');
+            c.totalTime += studySecondsCounter;
+            appData.totalStudySeconds += studySecondsCounter;
+            appData.history[today] = (appData.history[today] || 0) + studySecondsCounter;
+            studySecondsCounter = 0; activeCourseId = null; isStudyPaused = false;
+            save(); renderCourses(); updateDashboard(); updateChart(); updateWeeklyProgress(); updateDistChart();
+        }
+
+        // --- GRÁFICOS ---
+        function updateDistChart() {
+            const ctx = document.getElementById('distChart').getContext('2d');
+            const data = appData.courses.filter(c => c.totalTime > 0);
+            const labels = data.map(c => c.name);
+            const values = data.map(c => Math.round(c.totalTime / 60));
+            if (distChart) { distChart.data.labels = labels; distChart.data.datasets[0].data = values; distChart.update(); }
+            else { distChart = new Chart(ctx, { type: 'doughnut', data: { labels, datasets: [{ data: values, backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ef4444'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '75%' } }); }
+        }
+
+        function updateChart() {
+            const labels = [], values = [];
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date(); d.setDate(d.getDate() - i);
+                const ds = d.toLocaleDateString('pt-BR');
+                labels.push(ds.slice(0, 5));
+                values.push(Math.round((appData.history[ds] || 0) / 60));
+            }
+            if (myChart) { myChart.data.labels = labels; myChart.data.datasets[0].data = values; myChart.update(); }
+            else { myChart = new Chart(document.getElementById('weeklyChart'), { type: 'bar', data: { labels, datasets: [{ data: values, backgroundColor: '#6366f1', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { display: false }, x: { grid: { display: false }, ticks: { font: { size: 9 } } } } } }); }
+        }
+
+        // --- POMODORO ---
+        function togglePomodoro() {
+            const b = document.getElementById('btnPomo');
+            if (pomoInterval) { clearInterval(pomoInterval); pomoInterval = null; b.innerText = "PLAY"; }
+            else { b.innerText = "PAUSE"; pomoInterval = setInterval(() => { if (pomoSeconds > 0) { pomoSeconds--; updatePomo(); } else { clearInterval(pomoInterval); alert("Fim!"); resetPomodoro(); } }, 1000); }
+        }
+        function resetPomodoro() { clearInterval(pomoInterval); pomoInterval = null; pomoSeconds = 25 * 60; updatePomo(); document.getElementById('btnPomo').innerText = "PLAY"; }
+        function updatePomo() { document.getElementById('pomoDisplay').innerText = `${Math.floor(pomoSeconds / 60).toString().padStart(2, '0')}:${(pomoSeconds % 60).toString().padStart(2, '0')}`; }
+
+        // --- AUXILIARES ---
+        function updateDashboard() { document.getElementById('timeToday').innerText = formatTime(appData.totalStudySeconds); document.getElementById('goalBar').style.width = Math.min((appData.totalStudySeconds / appData.dailyGoalSeconds) * 100, 100) + "%"; }
+        function updateWeeklyGoal() { const h = parseFloat(document.getElementById('weeklyGoalInput').value); if (h > 0) { appData.weeklyGoalSeconds = h * 3600; save(); updateWeeklyProgress(); } }
+        function updateWeeklyProgress() {
+            let t = 0; for (let i = 0; i < 7; i++) { const d = new Date(); d.setDate(d.getDate() - i); t += (appData.history[d.toLocaleDateString('pt-BR')] || 0); }
+            const p = Math.min((t / appData.weeklyGoalSeconds) * 100, 100); document.getElementById('weeklyProgressBar').style.width = p + "%";
+            const msg = document.getElementById('milestoneMessage');
+            if (p >= 100) msg.innerHTML = "🏆 META BATIDA!"; else if (p >= 50) msg.innerHTML = "🚀 Metade já foi!"; else msg.innerHTML = "🌱 Vamos pra cima!";
+        }
+        function addCourse() { const n = document.getElementById('courseName').value; if (n.trim()) { appData.courses.push({ id: "c-" + Date.now(), name: n, topics: [], links: [], totalTime: 0 }); save(); renderCourses(); closeModal(); document.getElementById('courseName').value = ''; } }
+        function addTopic(id) { const i = document.getElementById(`in-${id}`); if (i.value.trim()) { const c = appData.courses.find(x => x.id === id); c.topics.push({ id: "t-" + Date.now(), title: i.value, completed: false }); i.value = ''; save(); renderCourses(); } }
+        function addLink(cid) {
+            const u = document.getElementById(`url-${cid}`), d = document.getElementById(`desc-${cid}`);
+            if (!u.value || !d.value) return; let url = u.value; if (!url.startsWith('http')) url = 'https://' + url;
+            appData.courses.find(x => x.id === cid).links.push({ id: "l-" + Date.now(), url, desc: d.value });
+            u.value = ''; d.value = ''; save(); renderCourses();
+        }
+
+        const openModal = () => document.getElementById('modal').classList.remove('hidden');
+        const closeModal = () => document.getElementById('modal').classList.add('hidden');
+        document.getElementById('themeToggle').onclick = () => document.documentElement.classList.toggle('dark');
+
+        window.onload = () => { carregarRoadmap(); renderCourses(); updateDashboard(); updateChart(); updateWeeklyProgress(); updateDistChart(); };
+    </script>
+</body>
+
+</html>
