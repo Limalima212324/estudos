@@ -16,6 +16,7 @@ sanitize();
 
 let studyInterval = null, pomoInterval = null, myChart = null, distChart = null;
 let activeCourseId = null, isStudyPaused = false, studySecondsCounter = 0, pomoSeconds = 25 * 60;
+let startTime = null; // Nova variável para rastrear o início real
 
 const save = () => localStorage.setItem('studyFlowData', JSON.stringify(appData));
 const formatTime = (s) => `${Math.floor(s/3600).toString().padStart(2,'0')}:${Math.floor((s%3600)/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;
@@ -41,7 +42,6 @@ function sincronizarComRoadmap(nomeTopico, concluido) {
 
     appData.roadmap.levels.forEach(level => {
         level.skills.forEach(skill => {
-            // Verifica se o nome da skill ou algum dos itens dela bate com o tópico do curso
             const matchNome = termoBusca.includes(skill.name.toLowerCase());
             const matchItens = skill.items.some(item => termoBusca.includes(item.toLowerCase()));
 
@@ -54,6 +54,7 @@ function sincronizarComRoadmap(nomeTopico, concluido) {
     save();
     renderizarRoadmap();
 }
+
 function renderizarRoadmap() {
     const container = document.getElementById('roadmapView');
     if (!appData.roadmap || !container) return;
@@ -80,17 +81,30 @@ function renderizarRoadmap() {
     }).join('');
 }
 
-// --- 3. GESTÃO DE CURSOS E CRONÔMETRO ---
+// --- 3. GESTÃO DE CURSOS E CRONÔMETRO (ATUALIZADO PARA PRECISÃO) ---
 function toggleStudyTimer(id) {
     if (activeCourseId && activeCourseId !== id) return alert("Finalize o atual!");
+    
     if (activeCourseId === id && !isStudyPaused) {
-        clearInterval(studyInterval); isStudyPaused = true;
+        // PAUSAR: Limpa o intervalo e marca como pausado
+        clearInterval(studyInterval); 
+        isStudyPaused = true;
     } else {
-        activeCourseId = id; isStudyPaused = false;
+        // INICIAR OU RETOMAR
+        activeCourseId = id; 
+        isStudyPaused = false;
+        
+        // Define o tempo de início baseado no que já foi contado (para não resetar ao despausar)
+        startTime = Date.now() - (studySecondsCounter * 1000);
+
         studyInterval = setInterval(() => {
-            studySecondsCounter++;
-            document.getElementById(`display-${id}`).innerText = formatTime(studySecondsCounter);
-        }, 1000);
+            // Calcula a diferença real de tempo desde o startTime
+            const agora = Date.now();
+            studySecondsCounter = Math.floor((agora - startTime) / 1000);
+            
+            const display = document.getElementById(`display-${id}`);
+            if (display) display.innerText = formatTime(studySecondsCounter);
+        }, 100); // Atualiza mais rápido (100ms) para ser mais fluído
     }
     renderCourses();
 }
@@ -99,11 +113,24 @@ function stopStudy(id) {
     clearInterval(studyInterval);
     const c = appData.courses.find(x => x.id === id);
     const today = new Date().toLocaleDateString('pt-BR');
+    
+    // Adiciona o tempo contado ao curso e ao global
     c.totalTime += studySecondsCounter;
     appData.totalStudySeconds += studySecondsCounter;
     appData.history[today] = (appData.history[today] || 0) + studySecondsCounter;
-    studySecondsCounter = 0; activeCourseId = null; isStudyPaused = false;
-    save(); renderCourses(); updateDashboard(); updateChart(); updateWeeklyProgress(); updateDistChart();
+    
+    // Reset de variáveis de controle
+    studySecondsCounter = 0; 
+    activeCourseId = null; 
+    isStudyPaused = false;
+    startTime = null;
+
+    save(); 
+    renderCourses(); 
+    updateDashboard(); 
+    updateChart(); 
+    updateWeeklyProgress(); 
+    updateDistChart();
 }
 
 // --- 4. EDIÇÕES (CURSO, TÓPICO, LINK) ---
@@ -249,29 +276,26 @@ function updateChart() {
 
 // --- 7. AUXILIARES ---
 function updateDashboard() {
-    document.getElementById('timeToday').innerText = formatTime(appData.totalStudySeconds);
-    document.getElementById('goalBar').style.width = Math.min((appData.totalStudySeconds/appData.dailyGoalSeconds)*100, 100) + "%";
+    const timeDisplay = document.getElementById('timeToday');
+    if (timeDisplay) timeDisplay.innerText = formatTime(appData.totalStudySeconds);
+    const goalBar = document.getElementById('goalBar');
+    if (goalBar) goalBar.style.width = Math.min((appData.totalStudySeconds/appData.dailyGoalSeconds)*100, 100) + "%";
 }
 
 function updateWeeklyProgress() {
     let t = 0; for(let i=0; i<7; i++) { const d = new Date(); d.setDate(d.getDate() - i); t += (appData.history[d.toLocaleDateString('pt-BR')] || 0); }
     const p = Math.min((t / appData.weeklyGoalSeconds) * 100, 100);
-    document.getElementById('weeklyProgressBar').style.width = p + "%";
+    const progressBar = document.getElementById('weeklyProgressBar');
+    if (progressBar) progressBar.style.width = p + "%";
     
     const msg = document.getElementById('milestoneMessage');
-    
-    // PORCENTAGENS 25, 50, 75 e 100
-    if (p >= 100) {
-        msg.innerHTML = "🏆 <span class='text-green-500 font-black'>META BATIDA!</span>";
-    } else if (p >= 75) {
-        msg.innerHTML = "🔥 <span class='text-orange-500'>75%! Falta pouco para o topo!</span>";
-    } else if (p >= 50) {
-        msg.innerHTML = "🚀 <span class='text-yellow-500'>50%! Metade do caminho já foi.</span>";
-    } else if (p >= 25) {
-        msg.innerHTML = "💪 <span class='text-indigo-400'>25% concluído! Ritmo excelente.</span>";
-    } else {
-        msg.innerHTML = "🌱 <span class='opacity-70 text-indigo-400'>Cada minuto conta. Vamos pra cima!</span>";
-    }
+    if (!msg) return;
+
+    if (p >= 100) msg.innerHTML = "🏆 <span class='text-green-500 font-black'>META BATIDA!</span>";
+    else if (p >= 75) msg.innerHTML = "🔥 <span class='text-orange-500'>75%! Falta pouco para o topo!</span>";
+    else if (p >= 50) msg.innerHTML = "🚀 <span class='text-yellow-500'>50%! Metade do caminho já foi.</span>";
+    else if (p >= 25) msg.innerHTML = "💪 <span class='text-indigo-400'>25% concluído! Ritmo excelente.</span>";
+    else msg.innerHTML = "🌱 <span class='opacity-70 text-indigo-400'>Cada minuto conta. Vamos pra cima!</span>";
 }
 
 const openModal = () => document.getElementById('modal').classList.remove('hidden');
